@@ -1,1 +1,0 @@
-(add (mul 42 x) (sub (div y 2) 42))
