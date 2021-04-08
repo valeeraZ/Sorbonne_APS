@@ -1,0 +1,6 @@
+*.cmi
+*.cmo
+evaluater
+prologTerm
+lexer.ml
+parser.ml

@@ -1,0 +1,136 @@
+Résumé: APS0
+ Syntaxe
+ Règles de typage
+ Règles sémantiques
+
+Vous:
+ Implémentation de
+  l'analayseur lexical et syntaxique
+   -> pour produire une représentation des programmes APS0
+      (1) comme un AST
+      (2) comme un terme prolog
+  le vérificateur de type en prolog (basé sur les règles de typage)
+   avec le terme prolog (2) comme entrée
+  l'évaluateur (basé sur les règles sémantiques du cours)
+   avec l'AST (1) comme l'entrée
+
+Moi: je donnerais pas de corrigé pour APS0
+
+Autres choses à savoir faire:
+ - savoir faire tourner les règles «à la main»
+ - savoir ajouter des nouveautés au langage
+
+Exemple de tourner à la main:
+
+A. Soit le programme APS0
+
+[ ECHO 42 ]
+
+1) montrer que ce programme est bien typé,
+   c'est-à-dire montrer que |- [ ECHO 42 ] : void
+2) montrer que ce programme affiche 42,
+   c'est-à-dire, montrer que |- [ ECHO 42 ] ~> (42)
+
+1) soit G0 c'est l'environnement de typage initial pour les opérateurs primitifs et constantes booléennes
+
+ à montrer: |- [ ECHO 42 ] : void
+ par (prog) il faut montrer G0 |-_{cmds} (ECHO 42; $) : void
+ par (stats) il faut montrer
+   (a) G0 |-_{stat} (ECHO 42) : void
+       par (echo) il faut montrer G0 |- 42 : int
+       par (num) c'est immédiat.
+   (b) G0 |-_{cmds} $ : void
+       par (end) c'est immédiat.
+
+Variante: montrer que l'on n'a pas |- [ECHO true]: void
+ par (prog) il faut montrer G0 |-_{cmds} (ECHO true; $) : void
+ par (stats) il faut montrer
+   (a) G0 |-_{stat} (ECHO true) : void
+       par (echo) il faut montrer G0 |- true : int (c'est faux)
+       or G0 |- true : bool
+        par (id) car G0(true)=bool
+	et int != bool
+	donc le programme n'est pas typable 
+
+2) soit $,$ le contexte d'évaluation vide, c'est-à-dire
+   l'environnement vide $ et le flux de sortie vide $
+
+   montrer que |- [ ECHO 42 ] ~> (42.$)
+   par (prog) il faut montrer $,$ |-_{cmds} (ECHO 42; $) ~> (42.$)
+   par (stats) il faut montrer
+     (a) $,$ |-_{stat} ECHO 42 ~> (42.$)
+         par (echo) il faut montrer $,$ |- 42 ~> inZ(42)
+	 immédiat par (num).
+     (b) $, (42.$) |-_{cmds} $ ~> (42.$)
+         immédiat par (end).
+
+B. soit le programme APS0
+
+[ CONST x int 42; ECHO x ]
+
+2) montrer que |- [ CONST x int 42; ECHO x ] ~> (42.$)
+   par (prog), il faut montrer $,$ |-_{cmds} (CONST ...; ECHO ...; $) ~> (42.$)
+   par (decs) il faut montrer
+     (a) $,$ |-_{dec} (CONST x int 42) ~> [x = inZ(42)]
+         par (const) il faut montrer $ |-_{expr} 42 ~> inZ(42)
+	 immédiat par (num).
+     (b) [x = inZ(42)],$ |-_{cmds} (ECHO x; $) ~> (42.$)
+         par (stats) il faut montrer
+	 (c) [x=inZ(42)],$ |-_{stat} ECHO x ~> (42.$)
+	     par (echo) il montrer que [x=inZ(42)] |-_{expr} x ~> inZ(42)
+	     par (id) [x=inZ(42)](x) = inZ(42).
+	 (d) [x=inZ(42)],(42.$) |- $ ~> (42.$)
+	     immédiat par (end).
+
+C. soit le programme
+
+[ ECHO (mul 21 2) ]
+
+1) typage montrer que |- [ ECHO (mul 21 2) ] : void
+2) évaluation montrer que |- [ ECHO (mul 21 2) ] ~> (42.$)
+
+D. soit le programme
+
+[ ECHO ([x:int](mul x 2) 21) ] 
+
+1) typage montrer que |- [ ECHO ([x:int](mul x 2) 21) ] : void
+2) évaluation montrer que |- [ ECHO ([x:int](mul x 2) 21) ] ~> (42.$)
+   par (prog) il faut montrer $,$ |-_{cmds} (ECHO ([x:int](mul x 2) 21); $) ~> (42.$)
+   par (stats) il faut montrer
+     (a) $,$ |- ECHO ([x:int](mul x 2) 21) ~> (42.$)
+         par (echo) il faut montrer $,$ |-_{expr} ([x:int](mul x 2) 21) ~> inZ(42)
+	 par (app) il faut montrer
+	   (c) $ |-_{expr} [x:int](mul x 2) ~> inF((mul x 2), \v1.$[x=v1])
+	       immédiat par (abs).
+	   (d) $ |-_{expr} 21 ~> inZ(21)
+	       immédita par (num).
+	   (e) posons r1 = \v1.$[x=v1](inZ(21)) = $[x=inZ(21)].
+	   (f) r1 |-_{expr} (mul x 2) ~> inZ(42)
+	       par (prim2) il faut montrer
+	         (h) r1 |-_{expr} x ~> inZ(21)
+	 	     par (id) car r1(x) = [x=inZ(21)](x) = inZ(21).
+		 (i) r1 |-_{expr} 2 ~> inZ(2)
+		     immédiat par (num).
+                 (j) pi(mul)(21,2) = 21 * 2 = 42.		     
+	 
+     (b) $,(42.$) |-_{cmds} $ ~> (42.$)
+         immédiat par (end).
+
+E. soit le programme
+
+[ FUN f int [x:int] (mul x 2); ECHO (f 21) ]
+
+1) typage
+2) évaluation
+
+E'. soit le programme
+
+[ CONST f (int -> int) [x:int](mul x 2); ECHO (f 21) ]
+
+1) typage
+2) évaluation
+
+F. soit le programme
+
+[ FUN REC f int [x:int](if (eq 0) 1 (mul x (f (sub x 1)))); ECHO (f 43) ]
+

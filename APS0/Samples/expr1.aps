@@ -1,0 +1,5 @@
+[
+    CONST x bool false;
+    ECHO (mul x 2)
+]
+
