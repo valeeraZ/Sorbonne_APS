@@ -83,7 +83,7 @@ let rec print_expr e =
       Printf.printf "%s" (string_of_uop op);
       Printf.printf "(";
       print_expr e;
-      Printf.printf "(";
+      Printf.printf ")";
     )
   | ASTFunc(args, e) -> (
       Printf.printf "func";
