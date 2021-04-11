@@ -1,0 +1,7 @@
+[
+  PROC printBool [b:bool]
+    [
+      IF b [ ECHO 0 ] [ ECHO 42 ]
+    ];
+  CALL printBool false
+]
