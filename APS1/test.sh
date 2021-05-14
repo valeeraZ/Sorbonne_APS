@@ -7,7 +7,7 @@ do
     else
         echo "\033[31m Type Checking error! Result: $type \033[0m"
     fi
-    res=$(./evaluater $file)
+    res=$(./eval $file)
     if [[ $res = "42" ]]; then
         echo "\033[32m Eval Checking OK. \033[0m"
     else
