@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+./prologTerm $1 | swipl -s typeChecker.pl -g main_stdin -g halt

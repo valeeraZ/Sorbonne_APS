@@ -1,0 +1,7 @@
+[
+  PROC inc [var x:int] [ SET x (add x 1) ];
+  VAR n int;
+  SET n 41;
+  CALL inc (adr n);
+  ECHO n
+]
