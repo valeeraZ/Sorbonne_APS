@@ -1,0 +1,239 @@
+APS1a
+
+Intructions: SET IF WHILE
+Procédures
+Mémoire
+
+Exemple 1
+---------
+
+[
+  VAR x int;
+  SET x 42;
+  ECHO x
+]
+
+Typage:
+ pour montrer que le programme est bine typé, on
+
+- G0 |-{dec} VAR x int : G0[x:(ref int)]
+  immédiat par (var).
+
+posons G1 = G0[x:(ref int)]
+
+- G1 |-{stat} SET x 42 : void
+  par (set)
+   - on a G1(x) = (ref int)
+   - G1 |-{expr} 42 : int
+     par (num).
+
+- G1 |-{stat} ECHO x : void
+  par (echo)
+    G1 |-{expr} x : int
+    par (idr)
+      on a G1(x) = (ref int).
+
+Evaluation:
+  pour montrer que le programme s'évalue sur (42.$)
+
+posons r0=$ (environnement vide),
+       s0=$ (mémoire vide),
+       w0=$ (sortie vide)
+
+- r0,s0 |-{dec} VAR x int ~> r1, s1
+  par (var)
+    soit (1,s1) = alloc(s0)
+    avec s1 = s0[1=any] = [1=any]
+    posons r1 = r0[x=inA(1)] = [x=inA(1)]
+
+- r1,s1,w0 |-{stat} SET x 42 ~> s2,w0
+  par (set)
+    - on a r1(x) = inA(1)
+    - r1,s1 |-{expr} 42 ~> inZ(42)
+       par (num).
+    - s2 = s1[1:=inZ(42)] = [1=any][1:=inZ(42)] = [1=inZ(42)]
+
+- r1, s2, w0 |-{stat} ECHO x ~> s2, (42.$)
+  par (echo)
+   - r1, s2 |-{expr} x ~> inZ(42)
+     par (id1)
+      - r1(x) = inA(1) et s2(1) = [1=inZ(42)](1) = inZ(42).
+   - (42.w0) = (42.$)
+
+au final
+env: [x=inA(1)]
+mem: [1=inZ(42)]
+out: (42)
+
+Exemple 2
+[
+  PROC p [x:int,y:bool]
+   [
+     IF y [ ECHO 0 ] [ ECHO x ]
+   ];
+  CALL p 42 true;
+  CALL p 42 false
+]
+
+Typage:
+
+- G0 |-{dec} PROC p [x:int,y:bool] [ IF ..] : G1
+  par (proc)
+    G0[x:int;y:bool] |—{bloc} [ IF y [ECHO 0] [ECHO x] ] : void
+    - G0[x:int;y:bool] |—{stat} IF y [ECHO 0] [ECHO x] : void
+      par (if)
+       - G0[x:int;y:bool] |-{expr} y : bool
+         par (idv) G0[x:int,y:bool](y) = bool.
+       - G0[x:int;y:bool] |-{stat} ECHO 0 : void
+         par (echo)
+	        - G0[x:int;y:bool] |-{expr} 0 : int par (num).
+       - G0[x:int;y:bool] |-{stat} ECHO x : void
+         par (echo)
+	        - G0[x:int;y:bool] |-{expr} x : int
+	          par (idv)  G0[x:int;y:bool](x) = int.
+    G1 = G0[p:int*bool -> void]	    
+
+- G1 |-{stat} CALL p 42 true : void
+  par (call)
+   - G1(p) = int * bool -> void
+   - G1 |-{exprp} 42 : int
+     par (val)
+      - G1 |-{expr} 42 : int par (num).
+   - G1 |-{exprp} true : bool
+     par (val)
+      - G1 |-{expr} true : bool par (true).
+- G1 |-{stat} CALL p 42 false
+  par (call)
+   - G1(p) = int * bool -> void
+   - G1 |-{exprp} 42 : int
+     par (val)
+      - G1 |-{expr} 42 : int par (num).
+   - G1 |-{exprp} false : bool
+     par (val)
+      - G1 |-{expr} false : bool par (false).
+
+Evaluation:
+le programme s'évalue sur la sortie (42.0)
+
+soit r0=$, s0=$, w0=$
+
+- r0, s0 |- PROC p [x:int,y:bool] [IF ...] ~> r1, s0
+  par (proc)
+    r1 = inP([ IF .. ], \v1,v2. r0[x=v1,y=v2])
+
+- r1, s0, w0 |- CALL p 42 true ~> s0, w1
+  par (call)
+   - r1(p) = inP([ IF .. ], \v1,v2.r0[x=v1,y=v2])
+   - r1, s0 |-{exprp} 42 ~> inZ(42)
+     par (val)
+       r1, s0 |-{expr} 42 ~> inZ(42)
+       immédiatement par (num).
+   - r1, s0 |-{exprp} true ~> inZ(1)
+     par (val)
+       r1, s0 |-{expr} true ~> 1 par (true).
+   - r = (\v1,v2. r0[x=v1,y=v2])(inZ(42), inZ(1))
+       = r0[x=inZ(42), y=inZ(1)]
+       = [x=inZ(42), y=inZ(1)]
+     r, s0, w0 |-{stat} IF y [ECHO 0] [ECHO x] ~> s0, w1
+     par (if1)
+      - r, s0 |-{expr} y ~> inZ(1)
+        par (id2) r(y)=inZ(1).
+      - r, s0, w0 |-{stat} ECHO 0 ~> s0, w1
+        par (echo)
+	 - r, s0 |-{expr} 0 ~> inZ(0) par (num).
+       w1 = (0.w0) = (0)	 
+- r1, s0, w1 |-{stat} CALL 42 false ~> s0, w2
+  par (call)
+   - r1(p) = inP([ IF .. ], \v1,v2.r0[x=v1,y=v2])
+   - r1, s0 |-{expr} 42 ~> inZ(42)
+   - r1, s0 |-{expr} false ~> inZ(0)
+   - r = (\v1,v2. r0[x=v1,y=v2])(inZ(42), inZ(0))
+       = [x=inZ(42); y=inZ(0)]
+     r, s0, w1 |-{stat} IF y [ECHO 0] [ECHO x] ~> s0, w2
+     par (if0)
+      - r, s0 |—{expr} y ~> inZ(0)
+        car r(y) = inZ(0).
+      - r, s0, w1 |-{stat} ECHO x ~> s0, w2
+        par (echo)
+	 - r, s0 |-{expr} x ~> inZ(42)
+	   par (id2)
+	    - r(x) = inZ(42).
+	 w2 = (42.w1) = (42.0).
+
+[
+  PROC REC p [var x:int,y:bool]
+   [ IF y [ECHO x; SET x (add x 1)] [SET x (add x 1); CALL x (not y)] ]
+  VAR a int;
+  SET a 42;
+  CALL p a false;
+  ECHO a
+]
+
+Evaluation:
+
+montrons que le programme s'évalue sur la sortie (44.43)
+
+- r0, s0 |-{dec} PROC REC p [var x:int,y:bool] [ IF .. ] ~> r1, s0
+  par (procrec)
+   r1 = r0[p=inPR(\v.inP([ IF ..],\v1,v2.r0[x=v1,y=v2][p=v])).
+
+- r1, s0 |-{dec} VAR a int ~> r2, s1
+  par (var)
+    soit (1,s1) = alloc(s0)
+    s1 = s0[1=any] = [1=any]
+    r2 = r1[a=inA(1)]
+
+- r2, s1, w0 |-{stat} SET a 42 ~> s2, w0
+  par (set)
+   - r2(a) = inA(1)
+   - r1, s1 |—{expr} 42 ~> inZ(42).
+     s2 = s1[1:=inZ(42)] = [1=inZ(42)]
+
+- r2, s2, w0 |-{stat} CALL p a false
+  par (callr)
+   - r2(p) = inPR(phi)
+     avec phi = \v.inP([ IF ..], \v1,v2.r0[x=v1;y=v2][p=v])
+     phi(inPR(phi)) = inP([ IF ..], \v1,v2.r0[x=v1;y=v2][p=inPR(phi)])
+   - r2, s2 |-{exprp} a ~> inA(1)
+     par (ref) car r2(a) = inA(1).
+   - r2, s2 |-{exprp} false ~> inZ(0) .. 
+   - r = (\v1,v2.r0[x=v1;y=v2][p=inPR(phi)])(inA(1),inZ(0))
+       = [x=inA(1);y=inZ(0);p=inPR(phi)]
+     r, s2 |-{stat} IF y [..] [SET x (add x 1); CALL p x (not y)] ~> s3, w1
+     par (if0)
+      - r, s2 |-{expr} y ~> inZ(0)...
+      - r, s2, |-{bloc} [SET x (add x 1); CALL p x (not y)] ~> s3, w1
+        par (cmds+)
+        - r, s2, w0 |—{stat} SET x (add x 1) ~> s3, w0
+	  par (set)
+	   - r(x) = inA(1)
+	   - r, s2 |-{expr} (add x 1) ~> inZ(43)
+	     car r(x) = inA(1) et s2(1) : inZ(42).
+           - s3 = s2[1:=inZ(43)] = [1=inZ(43)].
+        - r, s3, w0 |—{stat} CALL p x (not y) ~> s3; w1
+	  par (callr)
+	   - r, s3 |-{exprp} x ~> inA(1)
+	     par (ref) r(x) = inA(1).
+	   - r, s3 |-{expr} (not y) ~> inZ(1)
+	     car r(y) = inZ(0).
+	   - r' = [x=inA(1);y=inZ(1)]
+	     r', s3, w0 |-{stat} IF y [ECHO x; SET x (add x 1)] ~> s4, w1
+	     par (cmd*)
+	      - r', s3, w0 |-{stat} ECHO x ~> s4, w1
+	        par (echo)
+		 - r', s3 |—{expr} x ~> inZ(43)
+		   car r'(x)=inA(1) et s3(1) = inZ(43).
+		 w1 = (43.w0) = (43).  
+              - r', s3, w1 |-{stat} SET x (add x 1) ~> s4,w1
+	        par (set)
+		 - r'(x) = inA(1)
+		 - r', s3 |—{expr} (add x 1) ~> inZ(44)
+		   car r1(x)=inA(1); s3(1)=inZ(43).
+		   s4 = s3[1:=inZ(44)] = [1=inZ(44)].
+
+- r2, s4, w1 |-{stat} ECHO a ~> s4, w2
+  par (echo)
+   - r2, s4 |-{stat} a ~> inZ(44)
+      car r2(a) = inA(1) et s4(1) = inZ(44).
+     w2 = (44.w1) = (44.43).
+ 

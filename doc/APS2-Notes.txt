@@ -1,0 +1,33 @@
+[
+  CONST x (vec bool) (alloc 3);
+  SET (nth x 0) true;
+  SET (nth x 1) false;
+  SET (nth x 2) true
+]
+
+~> ([a=inZ(3); a+1=inZ(1) ; a+2=inZ(0) ; a+3=inZ(1)], w0)
+
+r0 = $
+s0 = $
+w0 = $
+r0,s0 |-{dec} (CONST x (vec bool) (alloc 3)) ~> (r1,s1)
+par (const)
+  - r0,s0 |-{expr} 3 ~> inZ(3) par (num).
+  - si alloc(s0,3) = (a,s1) avec
+    s1 = s0[a=inZ(3); a+1=any; a+2=any; a+3=any]
+    r1=r0[x=inB(0)].
+
+r1,s1,w0 |-{stat} (SET (nth x 0) true) ~> (s2,w0)
+par (set)
+  - r1,s1 |-{expr} true ~> inZ(1).
+  - r1,s1 |-{lval} (nth x 0) ~> (inA(a),s1)
+    par (nth)
+      - r1,s1 |-{expr} 0 ~> (inZ(0),s1)
+      - r1,s1 |-{lval} x ~> (inA(a),s1)
+        par (id...) r1(x) = inA(a)
+      - s2 = s1[a+1+0:=inZ(1)] = [a=inZ(3); a+1=inZ(1); a+2=any; a+3=any]
+
+r1,s2,w0 |-{stat} (SET (nth x 1) false) ~> (s3,w0)
+  avec s3 = s2[a+2:=inZ(0)] = [a=inZ(3); a+1=inZ(1); a+2=inZ(0); a+3=any]
+
+r1,s3,w0 |-{stat} (SET (nth x 2) true) ~> ([a=inZ(3); a+1=inZ(1) ; a+2=inZ(0) ; a+3=inZ(1)], w0)

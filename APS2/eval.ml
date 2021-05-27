@@ -11,6 +11,12 @@ type value = InN of int | InF of expr * string list * ident list | InFR of value
 (*association id-value*)
 and ident = Pair of string * value
 
+let print_val value =
+  match value with
+    InN(n) -> Printf.printf "%d\n" n
+  | InB(a, n) -> Printf.printf "B: %d, %d\n" a n
+  | _ -> Printf.printf "not implemented print function :) \n"
+
 let rec in_env id env =
   match env with
     Pair(i,v)::tl -> if (String.equal id i) then true else in_env id tl
@@ -129,42 +135,44 @@ let rec eval_expr expr env mem =
   | ASTFunc(args,e_prim) -> (InF(e_prim, (make_closure args []),env), mem)
   | ASTBool(e) -> if e then (InN(1), mem) else (InN(0), mem)
   | ASTApp (expr,exprs) -> (
-      match fst (eval_expr expr env mem) with
-        InF(e_prim,closure,envi) -> let env_fun = (assoc_val closure (get_eval exprs env mem))@envi in
-        eval_expr e_prim env_fun mem
-      | InFR(closure) ->( match closure with
-            InF(e_prim,f,envi) -> let env_fun = (assoc_val f (get_eval exprs env mem))@env in
-            eval_expr (ASTApp(e_prim,exprs)) env_fun mem
+      let f, new_mem = (eval_expr expr env mem) in
+        match f with
+          InF(e_prim,closure,envi) -> let env_fun = (assoc_val closure (get_eval exprs env new_mem))@envi in
+            eval_expr e_prim env_fun new_mem
+        | InFR(closure) ->( match closure with
+            InF(e_prim,f,envi) -> let env_fun = (assoc_val f (get_eval exprs env new_mem))@env in
+              eval_expr e_prim env_fun new_mem
           | _ -> failwith "not a recursive function")
       | InN(n) -> (InN(n), mem)
       | _ -> failwith "application result not applied yet"
     )
   (* APS2 *)
   | ASTLen(e) -> (
-      let v = eval_expr e env mem in
-        match fst v with
-          InB(a, n) -> (InN(n), mem)
-        | _ -> failwith "Evaluation of len: not a vec"
+      let v, new_mem = eval_expr e env mem in
+        match v with
+          InB(a, n) -> (InN(n), new_mem)
+        | v -> failwith "Evaluation of len: not a vec"
     )
   | ASTNth(vec, n) -> (
-      let v = fst (eval_expr vec env mem) in
-        let i = fst(eval_expr n env mem) in
+      let (v, mem1) = (eval_expr vec env mem) in
+        let (i, mem2) = (eval_expr n env mem1) in
           match i with
             InN(x) -> (
                 match v with
                   InB(a, size) -> (
-                    if x < size then (!(extract_from_mem (a+x) mem), mem) else failwith "Evaluation of nth: index out of range"
+                    if x < size then (!(extract_from_mem (a+x) mem2), mem2) else failwith "Evaluation of nth: index out of range"
                   )
-                | _ -> failwith "Evaluation of nth: not a vec"
+                | v -> (
+                  failwith "Evaluation of nth: not a vec"
+                )
               )
-          | _ -> failwith "Evaluation of nth: not an integer"  
+          | v -> failwith "Evaluation of nth: not an integer"
     )
   | ASTAlloc(n) -> (
       let v = fst (eval_expr n env mem) in
         match v with
           InN(x) -> (
             let (adresse, new_mem) = allocB mem x in
-
               (* voila ce qui est mise à jour *)
               (InB(adresse, x), new_mem)
           ) 
@@ -177,7 +185,8 @@ and eval_lval expr env mem =
       if in_env id env 
         then match extract_from_env id env with
           | InA(a) -> InA(a)
-          | v -> v
+          | InB(a, n) -> InB(a,n)
+          | _ -> failwith "Evaluation of lval error"
         else failwith (id^" not a variable in environment")
     )
   | ASTLval(lv, e) -> 
@@ -188,9 +197,13 @@ and eval_lval expr env mem =
               match e1 with
                 InN(x) -> (
                   let ad = a + x in
-                    match !(extract_from_mem ad mem2) with
-                      InB(adr, n) -> InB(adr, n)
-                    | _ -> InA(ad)
+                    match !(extract_from_mem ad mem) with
+                      InB(adr, n) -> (
+                        InB(adr, n)
+                      )
+                    | _ ->(
+                      InA(ad) 
+                    )
                 )
               | _ -> failwith "Evaluation of nth: not an integer"
             )
@@ -214,8 +227,11 @@ and eval_expr_p expr env mem =
 
 and get_eval exprs env mem =
   match exprs with
-    ASTExprs(e,es) -> (fst (eval_expr e env mem))::(get_eval es env mem)
-  | ASTExpr(e) -> (fst (eval_expr e env mem))::[]
+    ASTExprs(e,es) -> (
+      let value, new_mem = (eval_expr e env mem) in 
+        value::(get_eval es env new_mem)
+    )
+  | ASTExpr(e) -> [(fst (eval_expr e env mem))]
 
 (* APS1A *)
 and get_eval_p exprs env mem = 
@@ -243,9 +259,9 @@ and eval_stat stat env mem output =
   | ASTSet(lval,e) -> (
       match eval_lval lval env mem with
         | InA(a) -> 
-            let v = (extract_from_mem a mem) and affectation = fst (eval_expr e env mem) 
+            let v = (extract_from_mem a mem) and (affectation, new_mem) = (eval_expr e env mem) 
               in v := affectation;
-              (mem,output)
+              (new_mem, output)
         | InB(adr, n) -> failwith "cannot set a vec"
         | _ -> failwith ("address not in memory")
     )
@@ -257,12 +273,13 @@ and eval_stat stat env mem output =
                         else let (new_mem, new_output) = (eval_block b env mem output) in
                           eval_stat stat env new_mem new_output
   | ASTCall(p,exprs) -> 
-    match fst (eval_expr p env mem) with
-      InP(block,closure,envi) -> let env_proc = (assoc_val closure (get_eval_p exprs env mem))@envi in
-        eval_block block env_proc mem output
+    let (v, new_mem) = (eval_expr p env mem) in
+      match v with
+      InP(block,closure,envi) -> let env_proc = (assoc_val closure (get_eval_p exprs env new_mem))@envi in
+        eval_block block env_proc new_mem output
     | InPR(closure) ->( match closure with
-          InP(block,f,envi) -> let env_proc = (assoc_val f (get_eval_p exprs env mem))@env in
-            eval_block block env_proc mem output
+          InP(block,f,envi) -> let env_proc = (assoc_val f (get_eval_p exprs env new_mem))@env in
+            eval_block block env_proc new_mem output
         | _ -> failwith "not a recursive function")
     | _ -> failwith "called procedure not implemented yet"
 
@@ -277,11 +294,6 @@ and eval_cmds cmds env mem output =
 and eval_block block env mem output = 
   match block with
     ASTBlock(cmds) -> eval_cmds cmds env mem output
-
-let print_val value =
-  match value with
-    InN(n) -> Printf.printf "%d\n" n
-  | _ -> failwith "not a printable value"
 
 let rec print_output output =
   List.iter (function x -> print_val x) (List.rev output) 

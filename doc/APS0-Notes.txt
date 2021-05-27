@@ -5,7 +5,7 @@ Résumé: APS0
 
 Vous:
  Implémentation de
-  l'analayseur lexical et syntaxique
+  l'analyseur lexical et syntaxique
    -> pour produire une représentation des programmes APS0
       (1) comme un AST
       (2) comme un terme prolog
@@ -121,7 +121,65 @@ E. soit le programme
 [ FUN f int [x:int] (mul x 2); ECHO (f 21) ]
 
 1) typage
+G0 = [add : int -> int -> int; mul : int -> int -> int; ...]
+
+montrer |- [ FUN f int [x:int] (mul x 2); ECHO (f 21) ] : void
+  par (prog)
+  montrer G0 |-{cmds} (FUN f int [x:int] (mul x 2); ECHO (f 21); $) : void
+    par (decs)
+      1) montrer que G0 |-{dec} (FUN f int [x:int] (mul x 2)) : G0[f:int -> int]
+         par (fun)
+	 montrer G0[x:int] |-{expr} (mul x 2) : int
+	   par (app)
+	     3) montrer G0[x:int] |-{expr} mul : int -> int -> int
+	        par (id) car G0[x:int](mul) = int -> int -> int.
+	     4) montrer G0[x:int] |-{expr} x : int
+	        par (id) car G0[x:int](x) = int.
+	     5) montrer G0[x:int] |-{expr} 2 : int
+	        par (num).
+      2) posons r1 = G0[f:int -> int]
+         montrer r1 |-{cmds} (ECHO (f 21); $) : void
+         par (stats)
+      	   6) montrer r1 |-{stat} (ECHO (f 21)) : void
+	        par (echo)
+		montrer r1 |-{expr} (f 21):int
+		  par (app)
+		  8) montrer r1 |-{expr} f : int -> int
+		     par (id) car r1(f) = G0[f:int -> int](f) = int -> int.
+		  9) montrer r1 |-{expr} 21 : int
+		     par (num).
+	   7) montrer r1 |-{cmds} $ : void
+	      par (end).
+
 2) évaluation
+montrer |- [ FUN f int [x:int] (mul x 2); ECHO (f 21) ] ~> (42.$)
+par (prog)
+  montrer $,$ |-{cmds} (FUN f int [x:int] (mul x 2); ECHO (f 21); $) ~> (42.$)
+  par (decs)
+    1) montrer $ |-{dec} (FUN f int [x:int](mul x 2)) ~> [f = inF((mul x 2), \v.[x=v])]
+       par (fun).
+    2) posons r1 = [f = inF((mul x 2), \v.[x=v])]
+       montrons r1 |-{cmds} (ECHO (f 21); $) ~> (42.$)
+       par (stats)
+         3) montrer r1, $ |-{stat} (ECHO (f 21)) ~> (42.$)
+	    par (echo)
+	      montrer r1 |-{expr} (f 21) ~> inZ(42)
+	      par (app)
+	        5) montrer r1 |-{expr} f ~> inF((mul x 2), \v.[x=v])
+		   par (id) car r1(f) = inF((mul x 2), \v.[x=v]).
+		6) montrer r1 |-{expr} 21 ~> inZ(21)
+		   par (num).
+		7) posons r2 = (\v.[x=v])(inZ(21)) = [x=inZ(21)]
+		   montrer r2 |-{expr} (mul x 2) ~> inZ(42)
+		   par (prim2)
+		     8) r2 |-{expr} x ~> inZ(21)
+		        par (id) car r2(x) = inZ(21).
+                     9) r2 |-{expr} 2 ~> inZ(2)
+		        par (num).
+	            10) pi2(mul)(21,2) = 42.		
+	 4) montrer r1, (42.$) |-{cmds} $ ~> (42.$)
+	    par (end).
+
 
 E'. soit le programme
 
@@ -129,8 +187,152 @@ E'. soit le programme
 
 1) typage
 2) évaluation
+montrer [ CONST f (int -> int) [x:int](mul x 2); ECHO (f 21) ] ~> (42.$)
+par (prog)
+  montrer $,$ |- (CONST f (int -> int) [x:int](mul x 2); ECHO (f 21); $ ) ~> (42.$)
+  par (decs)
+
+    1) $ |-{dec} (CONST f (int -> int)  [x:int](mul x 2)) ~> $[f=inF((mul x 2),\v.$[x=v])]
+       par (const)
+       montrer $ |-{expr} [x:int](mul x 2) ~> inF((mul x 2),\v.$[x=v])
+         par (abs).
+    2) posons r1 = $[f=inF(mul x 2),\v.$[x=v]]
+       montrer r1, $ |-{cmds} (ECHO (f 21); $ ) ~> (42.$)
+         par (stats)
+	   3) montrer r1, $ |-{stat} (ECHO (f 21)) ~> (42.$)
+	      par (echo)
+	      montrer r1 |-{expr} (f 21) ~> inZ(42)
+	      par (app)
+	        5) montrer r1 |-{expr} f ~> inF((mul x 2), \v.[x=v])
+		   par (id) car r1(f) = inF((mul x 2), \v.[x=v]).
+		6) montrer r1 |-{expr} 21 ~> inZ(21)
+		   par (num).
+		7) posons r2 = (\v.[x=v])(inZ(21)) = [x=inZ(21)]
+		   montrer r2 |-{expr} (mul x 2) ~> inZ(42)
+		   par (prim2)
+		     8) r2 |-{expr} x ~> inZ(21)
+		        par (id) car r2(x) = inZ(21).
+                     9) r2 |-{expr} 2 ~> inZ(2)
+		        par (num).
+	            10) pi2(mul)(21,2) = 42.	
+	   4) montrer r1, (42.$) |-{cmds} $ ~> (42.$)
+	      par (end).
+
 
 F. soit le programme
 
-[ FUN REC f int [x:int](if (eq 0) 1 (mul x (f (sub x 1)))); ECHO (f 43) ]
+[ FUN REC f int [x:int](if (eq 0 x) 1 (mul x (f (sub x 1)))); ECHO (f 2) ]
 
+1) typage
+montrer |- [ FUN REC f int [x:int](if (eq 0 x) 1 (mul x (f (sub x 1)))); ECHO (f 2) ] : void
+par (prog)
+ montrer G0 |-{cmds} (FUN REC f int [x:int](if (eq 0 x) 1 (mul x (f (sub x 1)))); ECHO (f 2); $) : void
+ par (decs)
+   1) montrer G0 |-{dec} (FUN REC f int [x:int](if (eq 0 x) 1 (mul x (f (sub x 1))))) : G0[f:int -> int]
+      par (funrec)
+        3) soit G1 = G0[x:int;f:int -> int]
+	   montrer G1 |-{expr} (if (eq 0 x) 1 (mul x (f (sub x 1)))) : int
+	   par (if)
+	     4) montrer G1 |-{expr} (eq 0 x) : bool
+	        par (app}
+		  7) G1|- eq : int -> int -> bool
+		     par (id) (G0(eq) = int -> int -> bool).
+		  8) G1 |-{expr} 0 : int
+		     par (num).
+		  9) G1 |-{expr} x : int
+		     par (id).
+	     5) montrer G1 |-{expr} 1 : int
+	        par (num).
+             6) montrer G1 |-{expr} (mul x (f (sub x 1))) : int
+	        par (app)
+		  7) G1 |-{expr} mul : int -> int -> int
+		     par (id).
+		  8) G1 |-{expr} x : int
+		     par (id).
+		  9) G1 |-{expr} (f (sub x 1)) : int
+		     par (app)
+		       10) G1 |-{expr} f : int -> int
+		           par (id).
+		       11) G1 |-{expr} (sub x 1) : int
+		           par (app) (id) (id) (num).
+   2) montrer G0[f:int -> int] |-{cmds} (ECHO (f 2); $) : void
+      par (stats)
+        12) montrer G0[f:int -> int] |-{stat} (ECHO (f 2)) : void
+	    par (echo)
+	      14) montrer G0[f:int -> int] |-{expr} (f 2) : int
+	          par (app)
+		    15) G0[f:int -> int] |-{expr} f : int -> int par (id).
+		    16) G0[f:int -> int] |-{expr} 2 : int par (num).
+	13) montrer G0[f:int -> int] |-{cmds} $ : voir
+	    par (end).
+
+2) évaluation
+montrer |- [ FUN REC f int [x:int](if (eq 0 x) 1 (mul x (f (sub x 1)))); ECHO (f 2) ] ~> (2.$)
+par (prog)
+  montrer $,$ |-{cmds} (FUN REC f int [x:int](if ...); ECHO (f 2); $) ~> (2.$)
+  par (decs)
+    1) $ |- FUN REC f int [x:int](if ...) ~> $[f=inFR(\v.inF((if ...),\v1.$[x=v1][f=v]))]
+       par (funrec).
+    2) posons r1 = $[f=inFR(\v.inF((if ...),\v1.$[x=v1][f=v]))]
+       montrer r1, $ |-{cmds} ECHO (f 2); $) ~> (2.$)
+       par (stats)
+         3) r1, $ |-{stat} ECHO (f 2) ~> (2.$)
+	    par (echo)
+	      montrer r1 |-{expr} (f 2) ~> inZ(2)
+	      par (appr)
+	        5) montrer r1 |-{expr} f ~> inFR(\v.inF((if ...),\v1.$[x=v1][f=v]))
+		                                 \---------------v---------------/
+						                 phi
+                   par (id).
+                6) montrer r1 |-{expr} 2 ~> inZ(2)
+		   par (num).
+		7) posons phi = \v.inF((if ...),\v1.$[x=v1][f=v])
+		   phi(inFR(phi))
+		    = (\v.inF((if ...),\v1.$[x=v1][f=v])) (inFR(phi))
+		    = inF((if ...), \v1.$[x=v1][f=inFR(phi)])
+		                    \-----------v----------/
+				                r
+		8) posons r2 = r(inZ(2)) = (\v1.$[x=v1][f=inFR(phi)]) (inZ(2))
+		             = $[x=inZ(2); f=inFR(phi)]
+	           montrer r2 |-{expr} (if (eq 0 x) 1 (mul x (f (sub x 1)))) ~> inZ(2)
+		   par (if0)
+		     9) montrer r2 |-{expr} (eq 0 x) ~> inZ(0)
+		     10) montrer r2 |-{expr} (mul x (f (sub x 1))) ~> ~> inZ(2)
+		         par (prim2)
+			   11) montrer r2 |-{expr} x ~> inZ(2)
+			       par (id) car r2(x) = inZ(2).
+			   12) montrer r2 |-{expr} (f (sub x 1)) ~> inZ(1)
+			       par (appr)
+			         13) r2 |-{expr} f ~> inFR(phi)
+				     par (id).
+				 14) r2 |-{expr} (sub x 1) ~> inZ(1)
+				     par (prim2) (id) (num).
+				 15) soit r3 = $[x=inZ(1);f=inFR(phi)]
+				     montrer r3 |-{expr} (if (eq x 0) 1 (mul x (f (sub x 1)))) ~> inZ(1)
+				     par (if0)
+				     montrer
+				       16) r3 |-{expr} (eq x 0) ~> inZ(1)
+				           par (prim2) (id) (num).
+				       17) montrer r3 |-{expr} (mul x (f (sub x 1))) ~> inZ(1)
+				       par (prim2)
+				         18) montrer r3 |-{expr} x ~> inZ(1)
+					     par (id).
+					 19) montrer (f (sub x 1)) ~> inZ(1)
+					     par (appr)
+					     20) r3 |-{expr} f ~> inFR(phi)
+					         par (id).
+					     21) r3 |-{expr} (sub x 1) ~> inZ(0)
+	 				         par (prim2) (id) (num).
+				             22) soit r4 = (\v1.$[x=v1;f=inFR(phi)]) (inZ(0))
+					                 = $[x=inZ(0);f=inFR(phi)]
+					         montrer r4 |-{expr} (if (eq x 0) 1 (mul x (f (sub x 1)))) ~> inZ(1)
+						 par (if1)
+						   23) montrer r4 |-{expr} (eq x 0) ~> inZ(1)
+						       par (prim2) (id) (num).
+						   24) montrer r4 |-{expr} 1 ~> inZ(1)
+						       par (num).
+			   13) pi2(mul)(2,1) = 2.
+
+	 4) r1, (2.$) |-{cmds} $ ~> (2.$)
+	    par (end).
+         
